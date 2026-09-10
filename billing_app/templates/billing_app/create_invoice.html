@@ -1,0 +1,604 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N.P. Motors POS &mdash; Create Invoice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F5F2EB; color: #1A1A1A; }
+        .serif { font-family: 'Playfair Display', serif; }
+        input[type=text], input[type=number], input[type=tel], textarea, select {
+            width: 100%;
+            border: 1.5px solid #D1C9BF;
+            border-radius: 10px;
+            padding: 9px 13px;
+            font-size: 0.88rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #FDFCFA;
+            color: #1A1A1A;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        input[type=text]:focus, input[type=number]:focus, input[type=tel]:focus, textarea:focus, select:focus {
+            border-color: #DC2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+            background: #FFFFFF;
+        }
+        input::placeholder, textarea::placeholder { color: #A89880; }
+        label { display: block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #6B5E52; margin-bottom: 5px; }
+        .form-group { margin-bottom: 14px; }
+        .section-title {
+            font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em;
+            text-transform: uppercase; color: #DC2626;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: #E8E2DA; }
+        .pos-header { position: sticky; top: 0; z-index: 50; background: #1A1A1A; }
+        .preview-card { background: linear-gradient(135deg, #1A1A1A 0%, #2D2824 100%); color: #FAF7F2; border-radius: 16px; padding: 22px; }
+    </style>
+</head>
+<body class="min-h-screen pb-16">
+
+    <!-- ─── POS HEADER ─── -->
+    <header class="pos-header shadow-lg">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="{% static 'billing_app/images/logo.png' %}" alt="N.P. Motors Logo" class="w-10 h-10 object-contain rounded-lg">
+                <div>
+                    <div class="serif text-white font-bold text-lg leading-tight tracking-wide">N.P. MOTORS</div>
+                    <div class="text-red-400 text-xs font-bold uppercase tracking-widest leading-tight">Point of Sale &mdash; Multi-Item Billing</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-400 text-sm hidden sm:inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    {{ request.user.get_full_name|default:request.user.username }}
+                </span>
+                <a href="/" class="text-gray-400 hover:text-white text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    Home
+                </a>
+                <a href="/admin/logout/?next=/" class="inline-flex items-center gap-1.5 bg-red-700 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors" id="logout-btn">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── MAIN CONTENT ─── -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Page title -->
+        <div class="mb-6">
+            <span class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-red-600 font-bold mb-1">
+                <span class="block w-5 h-0.5 bg-red-600 rounded"></span>
+                Billing Console &bull; Dynamic Cart
+            </span>
+            <h1 class="serif text-3xl font-bold text-gray-900">Generate GST Tax Invoice</h1>
+            <p class="text-sm text-gray-500 mt-1">Add single or multiple electric scooters, spare parts, and accessories onto a single GST-compliant bill.</p>
+        </div>
+
+        <!-- Alert messages -->
+        <div id="alert-box" class="hidden rounded-xl p-4 mb-6 transition-all duration-300">
+            <div class="flex items-center gap-3">
+                <svg id="alert-icon" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24"></svg>
+                <div id="alert-text" class="text-sm font-bold"></div>
+            </div>
+        </div>
+
+        <!-- CSRF Token hidden field -->
+        {% csrf_token %}
+
+        <!-- ══ 1. CUSTOMER INFORMATION CARD ══ -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+            <div class="section-title">Step 1: Customer Details</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="form-group mb-0">
+                    <label for="cust_name">Customer Name <span class="text-red-600">*</span></label>
+                    <input type="text" id="cust_name" placeholder="e.g. Ramesh Kumar" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="cust_mobile">Mobile Number <span class="text-red-600">*</span></label>
+                    <input type="tel" id="cust_mobile" placeholder="e.g. 9876543210" maxlength="15" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="cust_address">Full Address <span class="text-red-600">*</span></label>
+                    <input type="text" id="cust_address" placeholder="e.g. Gaura, Arwal (Bihar)" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="cust_aadhar">Aadhaar No. <span class="normal-case text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" id="cust_aadhar" placeholder="e.g. 1234 5678 9012" maxlength="20">
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 2. DYNAMIC ITEM BUILDER + PREVIEW ══ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+            <!-- 2A. ADD ITEM FORM (2 COLS) -->
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                <div class="section-title">Step 2: Add Product / Spare Part to Bill</div>
+
+                <div class="space-y-4">
+                    <!-- Item dropdown -->
+                    <div>
+                        <label for="item-select">Choose Product or Spare Part <span class="text-red-600">*</span></label>
+                        <select id="item-select">
+                            <option value="">-- Select from Catalog or Custom Item --</option>
+                            <optgroup label="Electric Scooters">
+                                {% for v in vehicles %}
+                                <option value="v_{{ v.id }}" data-type="vehicle" data-name="{{ v.name }}" data-rate="{{ v.price }}" data-hsn="871190" data-battery="{{ v.battery_type }}" data-range="{{ v.range_km }}">
+                                    {{ v.name }} &mdash; &#8377;{{ v.price }} ({{ v.battery_type }})
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Genuine Spare Parts & Accessories">
+                                {% for s in spares %}
+                                <option value="s_{{ s.id }}" data-type="spare" data-name="{{ s.name }}" data-rate="{{ s.price }}" data-hsn="8714" data-app="{{ s.applicable_models }}">
+                                    {{ s.name }} &mdash; &#8377;{{ s.price }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Custom Item">
+                                <option value="custom" data-type="custom">Custom Item / Accessories / Labour...</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Item Name & HSN & Quantity & Rate Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                        <div class="sm:col-span-5">
+                            <label for="item-name-input">Item Description <span class="text-red-600">*</span></label>
+                            <input type="text" id="item-name-input" placeholder="Item name and model">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="item-hsn-input">HSN Code</label>
+                            <input type="text" id="item-hsn-input" placeholder="8714" value="8714">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="item-qty-input">Quantity <span class="text-red-600">*</span></label>
+                            <input type="number" id="item-qty-input" min="1" value="1">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label for="item-rate-input">Rate (&#8377;) <span class="text-red-600">*</span></label>
+                            <input type="number" id="item-rate-input" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <!-- Hardware Details Section (Collapsible/Conditional) -->
+                    <div id="hardware-section" class="border border-gray-200 rounded-xl p-4 bg-[#FAF9F5] transition-all duration-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 fill-red-600" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                Hardware Serial Numbers <span class="text-gray-400 font-normal">(for Vehicles/Batteries)</span>
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                                <label for="hw_chassis" class="text-[11px]">Chassis No.</label>
+                                <input type="text" id="hw_chassis" placeholder="Chassis number">
+                            </div>
+                            <div>
+                                <label for="hw_motor" class="text-[11px]">Motor No.</label>
+                                <input type="text" id="hw_motor" placeholder="Motor number">
+                            </div>
+                            <div>
+                                <label for="hw_battery" class="text-[11px]">Battery No.</label>
+                                <input type="text" id="hw_battery" placeholder="Battery number">
+                            </div>
+                            <div>
+                                <label for="hw_charger" class="text-[11px]">Charger No.</label>
+                                <input type="text" id="hw_charger" placeholder="Charger number">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Button -->
+                    <div class="flex justify-end pt-2">
+                        <button type="button" id="btn-add-item"
+                            class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md transition-all duration-200">
+                            <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            Add to Bill
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2B. LIVE TOTALS CARD (1 COL) -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 flex flex-col justify-between">
+                <div>
+                    <div class="section-title">Invoice Summary</div>
+                    <div class="preview-card space-y-4">
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-700 text-xs">
+                            <span class="text-gray-400 uppercase tracking-wider font-bold">Items in Bill:</span>
+                            <span class="text-white font-bold text-sm" id="cart-item-count">0 Items</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-gray-400">
+                                <span>Subtotal:</span>
+                                <span class="text-white font-bold" id="disp-subtotal">&#8377; 0.00</span>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>CGST (2.5%):</span>
+                                <span class="text-white font-bold" id="disp-cgst">&#8377; 0.00</span>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>SGST (2.5%):</span>
+                                <span class="text-white font-bold" id="disp-sgst">&#8377; 0.00</span>
+                            </div>
+                        </div>
+                        <div class="pt-3 border-t border-red-900 flex justify-between items-baseline">
+                            <span class="text-xs uppercase tracking-wider text-gray-400 font-bold">Total Payable:</span>
+                            <span class="serif text-2xl font-bold text-red-400" id="disp-total">&#8377; 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-gray-100">
+                    <button type="button" id="btn-submit-invoice"
+                        class="w-full inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-red-200 transition-all duration-200">
+                        <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        Generate Final Invoice
+                    </button>
+                    <div class="mt-3 text-[11px] text-gray-400 text-center flex items-center justify-center gap-2">
+                        <svg class="w-3.5 h-3.5 fill-green-600" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        GST Compliant &bull; GSTIN: 10EUKPK8054G1ZN
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ══ 3. CART TABLE CARD ══ -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div class="px-6 pt-6 pb-3">
+                <div class="section-title">Step 3: Added Items (The Cart)</div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="cart-table">
+                    <thead>
+                        <tr class="bg-gray-800 text-white text-xs uppercase tracking-wider">
+                            <th class="py-3 px-4 text-center w-12">#</th>
+                            <th class="py-3 px-4">Item &amp; Specifications</th>
+                            <th class="py-3 px-4">Hardware Details</th>
+                            <th class="py-3 px-4 text-center w-24">HSN</th>
+                            <th class="py-3 px-4 text-center w-20">Qty</th>
+                            <th class="py-3 px-4 text-right w-28">Rate (&#8377;)</th>
+                            <th class="py-3 px-4 text-right w-32">Amount (&#8377;)</th>
+                            <th class="py-3 px-4 text-center w-16">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-tbody" class="divide-y divide-gray-100 text-sm">
+                        <!-- Empty state row -->
+                        <tr id="cart-empty-row">
+                            <td colspan="8" class="py-12 text-center text-gray-400">
+                                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-50 text-gray-300 mb-2">
+                                    <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                </div>
+                                <div class="font-bold text-gray-500">No items added to bill yet.</div>
+                                <div class="text-xs text-gray-400 mt-1">Select a vehicle or spare part from Step 2 above and click "Add to Bill".</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ─── JAVASCRIPT LOGIC ─── -->
+    <script>
+    // Cart array
+    const cart = [];
+
+    // Elements
+    const itemSelect     = document.getElementById('item-select');
+    const itemNameInput  = document.getElementById('item-name-input');
+    const itemHsnInput   = document.getElementById('item-hsn-input');
+    const itemQtyInput   = document.getElementById('item-qty-input');
+    const itemRateInput  = document.getElementById('item-rate-input');
+
+    const hwChassis      = document.getElementById('hw_chassis');
+    const hwMotor        = document.getElementById('hw_motor');
+    const hwBattery      = document.getElementById('hw_battery');
+    const hwCharger      = document.getElementById('hw_charger');
+
+    const btnAddItem     = document.getElementById('btn-add-item');
+    const btnSubmit      = document.getElementById('btn-submit-invoice');
+
+    const cartTbody      = document.getElementById('cart-tbody');
+    const cartEmptyRow   = document.getElementById('cart-empty-row');
+    const cartCountDisp  = document.getElementById('cart-item-count');
+
+    const dispSubtotal   = document.getElementById('disp-subtotal');
+    const dispCGST       = document.getElementById('disp-cgst');
+    const dispSGST       = document.getElementById('disp-sgst');
+    const dispTotal      = document.getElementById('disp-total');
+
+    const alertBox       = document.getElementById('alert-box');
+    const alertText      = document.getElementById('alert-text');
+    const alertIcon      = document.getElementById('alert-icon');
+
+    // Show alert function
+    function showAlert(msg, isError = true) {
+        alertBox.className = isError 
+            ? 'bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-6 transition-all'
+            : 'bg-green-50 border border-green-200 text-green-800 rounded-xl p-4 mb-6 transition-all';
+        alertIcon.className = isError ? 'w-5 h-5 fill-red-600 flex-shrink-0' : 'w-5 h-5 fill-green-600 flex-shrink-0';
+        alertIcon.innerHTML = isError
+            ? '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+            : '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>';
+        alertText.textContent = msg;
+        alertBox.classList.remove('hidden');
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function hideAlert() {
+        alertBox.classList.add('hidden');
+    }
+
+    // When dropdown changes, auto-fill fields
+    itemSelect.addEventListener('change', function() {
+        const opt = itemSelect.options[itemSelect.selectedIndex];
+        if (!opt || !opt.value) {
+            itemNameInput.value = '';
+            itemRateInput.value = '';
+            itemHsnInput.value = '8714';
+            return;
+        }
+
+        const type = opt.getAttribute('data-type');
+        const name = opt.getAttribute('data-name') || '';
+        const rate = opt.getAttribute('data-rate') || '';
+        const hsn  = opt.getAttribute('data-hsn')  || '8714';
+
+        if (type === 'custom') {
+            itemNameInput.value = '';
+            itemNameInput.placeholder = 'Enter custom item or service description';
+            itemRateInput.value = '';
+            itemHsnInput.value = '8714';
+            itemNameInput.focus();
+        } else {
+            let fullName = name;
+            if (type === 'vehicle') {
+                const batt = opt.getAttribute('data-battery');
+                const rng  = opt.getAttribute('data-range');
+                if (batt || rng) fullName += ` (${batt || ''}${batt && rng ? ' | ' : ''}${rng ? 'Range: ' + rng : ''})`;
+            } else if (type === 'spare') {
+                const app = opt.getAttribute('data-app');
+                if (app) fullName += ` (For: ${app})`;
+            }
+            itemNameInput.value = fullName;
+            itemRateInput.value = rate;
+            itemHsnInput.value = hsn;
+        }
+    });
+
+    // Add item to cart
+    btnAddItem.addEventListener('click', function() {
+        hideAlert();
+        const name = itemNameInput.value.trim();
+        const rate = parseFloat(itemRateInput.value);
+        const qty  = parseInt(itemQtyInput.value, 10);
+        const hsn  = itemHsnInput.value.trim() || '8714';
+
+        if (!name) {
+            showAlert('Please specify an item name / description.');
+            itemNameInput.focus();
+            return;
+        }
+        if (isNaN(rate) || rate < 0) {
+            showAlert('Please enter a valid rate (e.g. 1500.00).');
+            itemRateInput.focus();
+            return;
+        }
+        if (isNaN(qty) || qty < 1) {
+            showAlert('Quantity must be at least 1.');
+            itemQtyInput.focus();
+            return;
+        }
+
+        // Build hardware string
+        const hwParts = [];
+        if (hwChassis.value.trim()) hwParts.push(`Chassis: ${hwChassis.value.trim()}`);
+        if (hwMotor.value.trim())   hwParts.push(`Motor: ${hwMotor.value.trim()}`);
+        if (hwBattery.value.trim()) hwParts.push(`Battery: ${hwBattery.value.trim()}`);
+        if (hwCharger.value.trim()) hwParts.push(`Charger: ${hwCharger.value.trim()}`);
+        const hardwareStr = hwParts.join(' | ');
+
+        // Add to array
+        const itemObj = {
+            name: name,
+            hsn: hsn,
+            quantity: qty,
+            rate: rate,
+            hardware: hardwareStr,
+            amount: Math.round(rate * qty * 100) / 100
+        };
+
+        cart.push(itemObj);
+
+        // Reset inputs
+        itemSelect.value = '';
+        itemNameInput.value = '';
+        itemRateInput.value = '';
+        itemQtyInput.value = '1';
+        itemHsnInput.value = '8714';
+        hwChassis.value = '';
+        hwMotor.value = '';
+        hwBattery.value = '';
+        hwCharger.value = '';
+
+        renderCart();
+    });
+
+    // Render cart table & update math
+    function renderCart() {
+        cartTbody.innerHTML = '';
+
+        if (cart.length === 0) {
+            cartTbody.appendChild(cartEmptyRow);
+            cartCountDisp.textContent = '0 Items';
+            dispSubtotal.textContent = '₹ 0.00';
+            dispCGST.textContent     = '₹ 0.00';
+            dispSGST.textContent     = '₹ 0.00';
+            dispTotal.textContent    = '₹ 0.00';
+            return;
+        }
+
+        let subtotal = 0;
+
+        cart.forEach((item, idx) => {
+            subtotal += item.amount;
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50/80 transition-colors';
+
+            tr.innerHTML = `
+                <td class="py-3.5 px-4 text-center font-bold text-gray-500">${idx + 1}</td>
+                <td class="py-3.5 px-4">
+                    <div class="font-bold text-gray-900">${escapeHtml(item.name)}</div>
+                </td>
+                <td class="py-3.5 px-4 text-xs text-gray-600 font-mono">
+                    ${item.hardware ? escapeHtml(item.hardware) : '<span class="text-gray-300">&mdash;</span>'}
+                </td>
+                <td class="py-3.5 px-4 text-center text-xs font-mono text-gray-500">${escapeHtml(item.hsn)}</td>
+                <td class="py-3.5 px-4 text-center font-semibold text-gray-800">${item.quantity} Nos</td>
+                <td class="py-3.5 px-4 text-right font-medium text-gray-700">₹ ${item.rate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="py-3.5 px-4 text-right font-bold text-gray-900">₹ ${item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="py-3.5 px-4 text-center">
+                    <button type="button" onclick="removeCartItem(${idx})" class="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition" title="Remove item">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </button>
+                </td>
+            `;
+
+            cartTbody.appendChild(tr);
+        });
+
+        const cgst  = Math.round(subtotal * 0.025 * 100) / 100;
+        const sgst  = Math.round(subtotal * 0.025 * 100) / 100;
+        const total = Math.round((subtotal + cgst + sgst) * 100) / 100;
+
+        cartCountDisp.textContent = `${cart.length} ${cart.length === 1 ? 'Item' : 'Items'}`;
+        dispSubtotal.textContent  = '₹ ' + subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        dispCGST.textContent      = '₹ ' + cgst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        dispSGST.textContent      = '₹ ' + sgst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        dispTotal.textContent     = '₹ ' + total.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Remove item from cart
+    window.removeCartItem = function(idx) {
+        cart.splice(idx, 1);
+        renderCart();
+    };
+
+    // Helper escape html
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>"']/g, function(m) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[m];
+        });
+    }
+
+    // Get CSRF cookie helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Submit Final Invoice via JSON POST fetch
+    btnSubmit.addEventListener('click', async function() {
+        hideAlert();
+
+        const name    = document.getElementById('cust_name').value.trim();
+        const mobile  = document.getElementById('cust_mobile').value.trim();
+        const address = document.getElementById('cust_address').value.trim();
+        const aadhar  = document.getElementById('cust_aadhar').value.trim();
+
+        if (!name) {
+            showAlert('Please enter the customer name.');
+            document.getElementById('cust_name').focus();
+            return;
+        }
+        if (!mobile || mobile.length < 10) {
+            showAlert('Please enter a valid 10-digit mobile number.');
+            document.getElementById('cust_mobile').focus();
+            return;
+        }
+        if (!address) {
+            showAlert('Please enter the customer address.');
+            document.getElementById('cust_address').focus();
+            return;
+        }
+
+        if (cart.length === 0) {
+            showAlert('Your cart is empty! Please add at least one vehicle or spare part before generating the invoice.');
+            return;
+        }
+
+        // Prepare JSON payload
+        const payload = {
+            customer: {
+                name: name,
+                mobile: mobile,
+                address: address,
+                aadhar_no: aadhar
+            },
+            items: cart
+        };
+
+        // Loading state
+        const origBtnText = btnSubmit.innerHTML;
+        btnSubmit.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg> Generating Invoice...`;
+        btnSubmit.disabled = true;
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+            const res = await fetch("{% url 'create_invoice' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+            if (result.status === 'success' && result.redirect_url) {
+                showAlert('Invoice generated successfully! Redirecting to PDF...', false);
+                window.location.href = result.redirect_url;
+            } else {
+                showAlert(result.message || 'Failed to generate invoice.');
+                btnSubmit.innerHTML = origBtnText;
+                btnSubmit.disabled = false;
+            }
+        } catch (err) {
+            showAlert('An unexpected network error occurred: ' + err.message);
+            btnSubmit.innerHTML = origBtnText;
+            btnSubmit.disabled = false;
+        }
+    });
+    </script>
+</body>
+</html>
