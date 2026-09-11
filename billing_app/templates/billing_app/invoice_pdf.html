@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tax Invoice - N.P. Motors | {{ invoice.unique_bill_id|truncatechars:12 }}</title>
+    <style>
+        /* ─────────────────────────────────────
+           PAGE SETUP: 1-PAGE A4 TARGET
+        ───────────────────────────────────── */
+        @page {
+            size: A4 portrait;
+            margin: 6mm 7mm 6mm 7mm;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 8pt;
+            color: #1a1a1a;
+            line-height: 1.35;
+            background: #fff;
+        }
+
+        /* ─────────────────────────────────────
+           OUTER BORDER / FRAME
+        ───────────────────────────────────── */
+        .document-frame {
+            border: 1.5px solid #1a1a1a;
+            padding: 0;
+        }
+
+        /* ─────────────────────────────────────
+           HEADER SECTION (LOGO + DEALERSHIP)
+        ───────────────────────────────────── */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .header-table td {
+            padding: 6px 8px;
+            vertical-align: middle;
+        }
+        .brand-main {
+            font-size: 14pt;
+            font-weight: 900;
+            color: #CC1B1B;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            line-height: 1.1;
+        }
+        .brand-sub {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-top: 1px;
+        }
+        .header-address {
+            font-size: 7pt;
+            color: #444;
+            line-height: 1.45;
+            margin-top: 3px;
+        }
+        .header-tag {
+            display: inline-block;
+            background: #CC1B1B;
+            color: #fff;
+            font-size: 7.5pt;
+            font-weight: bold;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 7px;
+            border-radius: 2px;
+        }
+
+        /* ─────────────────────────────────────
+           DOCUMENT TYPE BANNER
+        ───────────────────────────────────── */
+        .doc-type-bar {
+            background: #1a1a1a;
+            color: #FAF7F2;
+            text-align: center;
+            font-size: 8pt;
+            font-weight: bold;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 3px 0;
+            border-top: 1px solid #1a1a1a;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        /* ─────────────────────────────────────
+           CUSTOMER + INVOICE META
+        ───────────────────────────────────── */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .info-table td {
+            padding: 5px 8px;
+            vertical-align: top;
+        }
+        .info-bill-to {
+            width: 58%;
+            border-right: 1px solid #ccc;
+        }
+        .info-meta {
+            width: 42%;
+        }
+        .block-label {
+            font-size: 6.5pt;
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #777;
+            margin-bottom: 2px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 2px;
+        }
+        .customer-name {
+            font-size: 9.5pt;
+            font-weight: 900;
+            color: #1a1a1a;
+            text-transform: uppercase;
+        }
+        .customer-detail {
+            font-size: 7.5pt;
+            color: #333;
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+        .meta-line {
+            font-size: 7.5pt;
+            margin-bottom: 2px;
+        }
+        .meta-lbl {
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+            font-size: 6.5pt;
+            letter-spacing: 0.04em;
+        }
+        .meta-val {
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+        .invoice-id-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 7.5pt;
+            color: #CC1B1B;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            background: #FFF5F5;
+            padding: 1px 5px;
+            border: 1px solid #FECACA;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* ─────────────────────────────────────
+           ITEMS TABLE
+        ───────────────────────────────────── */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .items-table th {
+            background: #2D2824;
+            color: #FAF7F2;
+            padding: 5px 6px;
+            font-size: 7pt;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border: 1px solid #444;
+        }
+        .items-table td {
+            padding: 5px 6px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+            font-size: 7.5pt;
+        }
+        .items-table tbody tr:nth-child(even) {
+            background: #FAFAF8;
+        }
+        .item-name {
+            font-weight: bold;
+            font-size: 8.5pt;
+            color: #1a1a1a;
+            margin-bottom: 1px;
+        }
+        .item-sub {
+            font-size: 6.5pt;
+            color: #555;
+            line-height: 1.35;
+        }
+        .hw-lbl {
+            font-size: 6.5pt;
+            font-weight: bold;
+            color: #555;
+            text-transform: uppercase;
+        }
+        .hw-val {
+            font-size: 6.5pt;
+            font-family: 'Courier New', Courier, monospace;
+            color: #111;
+            font-weight: bold;
+        }
+        .subtotal-row td {
+            background: #F3F4F6;
+            border-top: 1.5px solid #1a1a1a;
+            font-weight: bold;
+            padding: 5px 6px;
+        }
+
+        /* ─────────────────────────────────────
+           TAX + SUMMARY BLOCK
+        ───────────────────────────────────── */
+        .summary-block-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-top: 1px solid #1a1a1a;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .summary-block-table td {
+            vertical-align: top;
+            padding: 6px 8px;
+        }
+        .summary-left {
+            width: 52%;
+            border-right: 1px solid #ccc;
+        }
+        .summary-right {
+            width: 48%;
+        }
+        .sec-title {
+            font-size: 6.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #777;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
+        }
+        .calc-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .calc-table td {
+            padding: 2px 4px;
+            font-size: 7.5pt;
+            border: none;
+        }
+        .calc-lbl { color: #555; }
+        .calc-val { text-align: right; font-weight: bold; color: #1a1a1a; }
+        .calc-total td {
+            border-top: 1.5px solid #1a1a1a;
+            padding-top: 3px;
+            padding-bottom: 3px;
+            font-size: 9pt;
+            font-weight: 900;
+        }
+        .calc-total .calc-lbl { color: #1a1a1a; }
+        .calc-total .calc-val { color: #CC1B1B; font-size: 10pt; }
+
+        /* ─────────────────────────────────────
+           FOOTER (QR + TERMS + SIGNATORY)
+        ───────────────────────────────────── */
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .footer-table td {
+            vertical-align: top;
+            padding: 6px 8px;
+        }
+        .footer-qr {
+            width: 20%;
+            border-right: 1px solid #ccc;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .footer-terms {
+            width: 48%;
+            border-right: 1px solid #ccc;
+        }
+        .footer-sig {
+            width: 32%;
+            text-align: center;
+            vertical-align: bottom;
+            padding-top: 8px;
+        }
+        .qr-img {
+            width: 55px;
+            height: 55px;
+        }
+        .terms-list {
+            padding-left: 12px;
+            margin: 0;
+        }
+        .terms-list li {
+            font-size: 6pt;
+            color: #555;
+            line-height: 1.35;
+            margin-bottom: 1px;
+        }
+        .sig-box {
+            margin-top: 25px;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 3px;
+        }
+        .sig-title {
+            font-size: 7pt;
+            font-weight: bold;
+            color: #1a1a1a;
+            text-transform: uppercase;
+        }
+        .sig-sub {
+            font-size: 6pt;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<div class="document-frame">
+
+    <!-- ═══════════════ 1. HEADER (LOGO + DEALERSHIP) ═══════════════ -->
+    <table class="header-table">
+        <tr>
+            {% if logo_base64 %}
+            <td style="width: 13%; vertical-align: middle; padding: 6px 6px 6px 8px;">
+                <img src="data:image/png;base64,{{ logo_base64 }}" style="width: 58px; height: 58px;" alt="NP Motors Logo">
+            </td>
+            {% endif %}
+            {% if logo_base64 %}
+            <td style="width: 57%; vertical-align: middle; padding: 6px 6px;">
+            {% else %}
+            <td style="width: 70%; vertical-align: middle; padding: 6px 6px;">
+            {% endif %}
+                <div class="brand-main">N.P. MOTORS</div>
+                <div class="brand-sub">Komaki Electric Vehicle Dealership</div>
+                <div class="header-address">
+                    Gaura, Near Sainik Canteen, Belkhara Road, Arwal, Bihar &mdash; 804402<br>
+                    <strong>Mob:</strong> 9546992511, 9973738049 &nbsp;|&nbsp; <strong>GSTIN:</strong> 10EUKPK8054G1ZN
+                </div>
+            </td>
+            <td style="width: 30%; text-align: right; vertical-align: middle; padding: 6px 8px 6px 6px;">
+                <div class="header-tag">GST TAX INVOICE</div>
+                <div style="font-size: 7pt; font-weight: bold; color: #444; text-transform: uppercase; margin-top: 3px;">Original for Recipient</div>
+                <div style="font-size: 6.5pt; color: #777; margin-top: 2px;">State: Bihar (Code 10)</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ═══════════════ 2. TAX INVOICE BANNER ═══════════════ -->
+    <div class="doc-type-bar">TAX INVOICE</div>
+
+    <!-- ═══════════════ 3. CUSTOMER & INVOICE META ═══════════════ -->
+    <table class="info-table">
+        <tr>
+            <td class="info-bill-to">
+                <div class="block-label">Customer Details (Bill To)</div>
+                <div class="customer-name">{{ invoice.customer.name }}</div>
+                <div class="customer-detail">
+                    <strong>Address:</strong> {{ invoice.customer.address }}<br>
+                    <strong>Mobile:</strong> {{ invoice.customer.mobile }}
+                    {% if invoice.customer.aadhar_no %}
+                    &nbsp;|&nbsp; <strong>Aadhaar:</strong> XXXX-XXXX-{{ invoice.customer.aadhar_no|slice:"-4:" }}
+                    {% endif %}
+                </div>
+            </td>
+            <td class="info-meta">
+                <div class="block-label">Invoice Details</div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: none; padding: 1px 0; font-size: 6.5pt; font-weight: bold; color: #666; text-transform: uppercase;">Invoice No:</td>
+                        <td style="border: none; padding: 1px 0; text-align: right;">
+                            <span class="invoice-id-display">{{ invoice.unique_bill_id|truncatechars:18 }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: none; padding: 1px 0; font-size: 6.5pt; font-weight: bold; color: #666; text-transform: uppercase;">Date:</td>
+                        <td style="border: none; padding: 1px 0; text-align: right; font-size: 7.5pt; font-weight: bold; color: #1a1a1a;">
+                            {{ invoice.created_at|date:"d F, Y" }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: none; padding: 1px 0; font-size: 6.5pt; font-weight: bold; color: #666; text-transform: uppercase;">Time:</td>
+                        <td style="border: none; padding: 1px 0; text-align: right; font-size: 7.5pt; font-weight: bold; color: #1a1a1a;">
+                            {{ invoice.created_at|date:"h:i A" }}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ═══════════════ 4. ITEMS & HARDWARE TABLE ═══════════════ -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%; text-align: center;">S.No</th>
+                <th style="width: 33%; text-align: left;">Particulars</th>
+                <th style="width: 27%; text-align: left;">Hardware Details</th>
+                <th style="width: 7%; text-align: center;">HSN</th>
+                <th style="width: 6%; text-align: center;">Qty</th>
+                <th style="width: 11%; text-align: right;">Rate (Rs.)</th>
+                <th style="width: 11%; text-align: right;">Amount (Rs.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items|default:invoice.items.all %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ forloop.counter }}</td>
+                <td>
+                    <div class="item-name">{{ item.item_name }}</div>
+                </td>
+                <td class="hardware-line">
+                    {% if item.hardware_details %}
+                    <div class="hw-val" style="line-height: 1.35;">{{ item.hardware_details|linebreaksbr }}</div>
+                    {% else %}
+                    <span style="color: #888;">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center; font-size: 7pt;">{{ item.hsn_code|default:"8714" }}</td>
+                <td style="text-align: center;">{{ item.quantity }} Nos</td>
+                <td style="text-align: right;">{{ item.rate }}</td>
+                <td style="text-align: right; font-weight: bold;">{{ item.amount }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td style="text-align: center;">1</td>
+                <td colspan="6" style="color: #888; text-align: center;">No items recorded</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+
+        <!-- Subtotal Row -->
+        <tr class="subtotal-row">
+            <td colspan="5" style="text-align: right; font-size: 7.5pt; font-weight: bold; color: #555;">Taxable Items Subtotal:</td>
+            <td colspan="2" style="text-align: right; font-size: 8.5pt; font-weight: 900; color: #1a1a1a;">Rs. {{ invoice.subtotal }}</td>
+        </tr>
+    </table>
+
+    <!-- ═══════════════ 5. TAX & BALANCE SUMMARY ═══════════════ -->
+    <table class="summary-block-table">
+        <tr>
+            <td class="summary-left">
+                <div class="sec-title">Tax Details (GST @ 5%)</div>
+                <table class="calc-table">
+                    <tr>
+                        <td class="calc-lbl">Taxable Amount (Base)</td>
+                        <td class="calc-val">Rs. {{ invoice.subtotal }}</td>
+                    </tr>
+                    <tr>
+                        <td class="calc-lbl">CGST @ 2.5%</td>
+                        <td class="calc-val">Rs. {{ invoice.cgst }}</td>
+                    </tr>
+                    <tr>
+                        <td class="calc-lbl">SGST @ 2.5%</td>
+                        <td class="calc-val">Rs. {{ invoice.sgst }}</td>
+                    </tr>
+                    <tr class="calc-total">
+                        <td class="calc-lbl">GRAND TOTAL</td>
+                        <td class="calc-val">Rs. {{ invoice.total_amount }}</td>
+                    </tr>
+                </table>
+            </td>
+            <td class="summary-right">
+                <div class="sec-title">Payment &amp; Balance Summary</div>
+                <table class="calc-table">
+                    <tr>
+                        <td class="calc-lbl">Total Invoice Value</td>
+                        <td class="calc-val">Rs. {{ invoice.total_amount }}</td>
+                    </tr>
+                    <tr>
+                        <td class="calc-lbl">Advance Received</td>
+                        <td class="calc-val">Rs. 0.00</td>
+                    </tr>
+                    <tr class="calc-total">
+                        <td class="calc-lbl">BALANCE DUE</td>
+                        <td class="calc-val">Rs. {{ invoice.total_amount }}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ═══════════════ 6. FOOTER: QR + TERMS + SIGNATURE ═══════════════ -->
+    <table class="footer-table">
+        <tr>
+            <!-- QR Code -->
+            <td class="footer-qr">
+                <img class="qr-img" src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code">
+                <div style="font-size: 6pt; color: #777; margin-top: 2px;">Scan to Verify</div>
+            </td>
+
+            <!-- Terms -->
+            <td class="footer-terms">
+                <div class="sec-title">Terms &amp; Conditions</div>
+                <ol class="terms-list">
+                    <li>Goods once sold will not be taken back or exchanged.</li>
+                    <li>Any damage due to water / accident is not covered under warranty.</li>
+                    <li>Warranty is void if tampered with or repaired at unauthorised centres.</li>
+                    <li>Battery warranty: 6 months. Charger warranty: 3 months.</li>
+                    <li>Subject to Arwal jurisdiction only.</li>
+                </ol>
+                <div style="font-size: 5.5pt; color: #888; font-style: italic; margin-top: 3px;">
+                    This is a computer-generated GST tax invoice and does not require a physical stamp.
+                </div>
+            </td>
+
+            <!-- Signature -->
+            <td class="footer-sig">
+                <div style="font-size: 7.5pt; font-weight: bold; color: #CC1B1B;">N.P. MOTORS</div>
+                <div style="font-size: 6pt; color: #777;">Komaki EV Division</div>
+                <div class="sig-box">
+                    <div class="sig-title">Authorised Signatory</div>
+                    <div class="sig-sub">For N.P. Motors, Arwal</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+</div><!-- /.document-frame -->
+
+</body>
+</html>
