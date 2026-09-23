@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import qrcode
+import pandas as pd
 from django.conf import settings
 from xhtml2pdf import pisa
 from django.shortcuts import render, redirect, get_object_or_404
@@ -172,3 +173,74 @@ def home(request):
 def catalog(request):
     vehicles = Vehicle.objects.all()
     return render(request, 'billing_app/catalog.html', {'vehicles': vehicles})
+
+# --- TEMPORARY IMPORT VIEW ---
+def trigger_import(request):
+    # Security check: Sirf logged in admin hi is link ko run kar sake
+    if not request.user.is_superuser:
+        return HttpResponse("Aap admin nahi ho, isliye access denied!", status=401)
+        
+    dealer_file = os.path.join(settings.BASE_DIR, 'KOMAKI DEALER RATE LIST (1)-2.xlsx')
+    spare_file = os.path.join(settings.BASE_DIR, 'spare parts.xls')
+    
+    output = []
+    
+    # 1. IMPORT VEHICLES
+    if os.path.exists(dealer_file):
+        try:
+            df_vehicles = pd.read_excel(dealer_file, sheet_name='SATYAM MOTORS', header=2)
+            count = 0
+            for index, row in df_vehicles.iterrows():
+                model_name = str(row.get('MODEL ', '')).strip()
+                if model_name and model_name.lower() != 'nan':
+                    raw_price = str(row.get('SALE RATE AS PER CITY', row.get('DEALER RATE', 0.0)))
+                    clean_price = raw_price.replace(',', '').strip()
+                    try:
+                        price = float(clean_price)
+                    except ValueError:
+                        price = 0.0
+
+                    battery = str(row.get('BATTERY TYPE', '')).strip()
+                    range_km = str(row.get('RANGE (DISTANCE)', '')).strip()
+
+                    Vehicle.objects.get_or_create(
+                        name=model_name,
+                        defaults={'price': price, 'battery_type': battery, 'range_km': range_km}
+                    )
+                    count += 1
+            output.append(f"✅ {count} Vehicles imported successfully!")
+        except Exception as e:
+            output.append(f"❌ Error importing Vehicles: {e}")
+    else:
+        output.append(f"File not found: {dealer_file}")
+
+    # 2. IMPORT SPARES
+    if os.path.exists(spare_file):
+        try:
+            df_spares = pd.read_excel(spare_file, sheet_name='XGT KM', header=2)
+            count = 0
+            for index, row in df_spares.iterrows():
+                item_name = str(row.get('ITEMS ', '')).strip()
+                if item_name and item_name.lower() != 'nan':
+                    base_price = row.get('X1/KM', None)
+                    if pd.isna(base_price):
+                        base_price = row.get('SE/X4', 0.0)
+                    
+                    raw_sp_price = str(base_price).replace(',', '').strip()
+                    try:
+                        price = float(raw_sp_price)
+                    except ValueError:
+                        price = 0.0
+
+                    SparePart.objects.get_or_create(
+                        name=f"{item_name} (Standard)",
+                        defaults={'price': price}
+                    )
+                    count += 1
+            output.append(f"✅ {count} Spare Parts imported successfully!")
+        except Exception as e:
+            output.append(f"❌ Error importing Spare Parts: {e}")
+    else:
+        output.append(f"File not found: {spare_file}")
+
+    return HttpResponse("<br>".join(output))
