@@ -7,5 +7,4 @@ urlpatterns = [
     path('create-invoice/', views.create_invoice, name='create_invoice'),
     path('invoice/<uuid:unique_bill_id>/', views.view_invoice_pdf, name='view_invoice_pdf'),
     path('secret-import-excel/', views.trigger_import, name='trigger_import'),
-    p
 ]
