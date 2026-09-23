@@ -91,7 +91,6 @@ def create_invoice(request):
             'customer_form': customer_form,
         })
 
-@login_required(login_url='/admin/login/')
 def view_invoice_pdf(request, unique_bill_id):
     invoice = get_object_or_404(Invoice, unique_bill_id=unique_bill_id)
 
