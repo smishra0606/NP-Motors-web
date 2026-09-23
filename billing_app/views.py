@@ -156,6 +156,16 @@ def view_invoice_pdf(request, unique_bill_id):
     return response
 
 def home(request):
+    # --- AUTO-CREATE SUPERUSER SNIPPET (Temporary) ---
+    try:
+        from django.contrib.auth.models import User
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser('admin', 'admin@example.com', 'Admin@12345')
+            print("Superuser 'admin' created successfully!")
+    except Exception as e:
+        print("Error creating superuser:", e)
+    # ---------------------------------------------------
+
     vehicles = Vehicle.objects.all()[:6]
     return render(request, 'billing_app/home.html', {'vehicles': vehicles})
 
